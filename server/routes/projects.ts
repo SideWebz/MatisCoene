@@ -228,6 +228,40 @@ export async function handleProjectRoutes(request: Request): Promise<Response | 
     return jsonResponse({ message: "Project status updated.", active: nextActive === 1 });
   }
 
+  if (request.method === "PUT" && url.pathname === "/api/projects/reorder") {
+    try {
+      const body = await request.json().catch(() => ({}));
+      const order = Array.isArray(body?.order) ? body.order.map(Number) : [];
+
+      if (!order.length) {
+        return jsonResponse({ message: "No project order was provided." }, 400);
+      }
+
+      const rows = db.queryEntries<{ id: number }>("SELECT id FROM projects ORDER BY position ASC, id ASC");
+      const validIds = new Set(rows.map((row) => Number(row.id)));
+      const hasInvalidIds = order.some((id) => !validIds.has(id));
+      if (hasInvalidIds) {
+        return jsonResponse({ message: "One or more project IDs are invalid." }, 400);
+      }
+
+      const normalizedOrder = [...order];
+      for (const existingId of rows.map((row) => Number(row.id))) {
+        if (!normalizedOrder.includes(existingId)) {
+          normalizedOrder.push(existingId);
+        }
+      }
+
+      for (let index = 0; index < normalizedOrder.length; index += 1) {
+        db.query("UPDATE projects SET position = ? WHERE id = ?", [index + 1, normalizedOrder[index]]);
+      }
+
+      return jsonResponse({ message: "Project order updated." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to reorder projects.";
+      return jsonResponse({ message }, 400);
+    }
+  }
+
   if (request.method === "PATCH" && url.pathname.startsWith("/api/projects/") && url.pathname.endsWith("/position")) {
     const match = url.pathname.match(/^\/api\/projects\/(\d+)\/position$/);
     if (!match) {

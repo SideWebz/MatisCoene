@@ -37,7 +37,37 @@ const api = {
     }
     return data;
   },
+
+  async put(url, payload, isJson = true) {
+    const requestBody = payload instanceof FormData ? payload : JSON.stringify(payload ?? {});
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: isJson && !(payload instanceof FormData) ? { "Content-Type": "application/json" } : {},
+      credentials: "same-origin",
+      body: requestBody,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Request failed.");
+    }
+    return data;
+  },
 };
+
+function mergeFiles(existingFiles, incomingFiles) {
+  const merged = [...existingFiles];
+  const seen = new Set(merged.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
+
+  for (const file of incomingFiles) {
+    const key = `${file.name}-${file.size}-${file.lastModified}`;
+    if (!seen.has(key)) {
+      merged.push(file);
+      seen.add(key);
+    }
+  }
+
+  return merged;
+}
 
 function escapeHtml(value) {
   return String(value)
@@ -88,6 +118,11 @@ function getCurrentPath() {
   return window.location.pathname;
 }
 
+function getProjectIdFromPath() {
+  const segments = getCurrentPath().split("/").filter(Boolean);
+  return Number(segments[2] ?? 0);
+}
+
 function getSidebarLinks(user) {
   const links = [
     { href: "/admin/projects", label: "Projects", icon: "grid-3x3-gap" },
@@ -121,7 +156,9 @@ function renderShell(user, title, content, actionMarkup = "") {
     <div class="admin-layout">
       <aside class="admin-sidebar">
         <div class="brand-block">
-          <div class="brand-mark">MC</div>
+          <div class="brand-mark">
+            <img src="/assets/brand/MatisCoene_Logo.png" alt="Matis Coene logo" class="brand-mark-logo" />
+          </div>
           <div>
             <div class="brand-name">Matis Coene</div>
             <div class="brand-subtitle">Backoffice</div>
@@ -368,18 +405,23 @@ async function initProjectListPage() {
         const projectId = Number(button.dataset.projectId);
         const direction = button.dataset.direction;
         try {
-          await fetch(`/api/projects/${projectId}/position`, {
-            method: "PATCH",
-            credentials: "same-origin",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ direction }),
-          }).then(async (response) => {
-            const payload = await response.json();
-            if (!response.ok) {
-              throw new Error(payload.message || "Unable to reorder project.");
-            }
-            return payload;
-          });
+          const visibleProjectIds = allProjects
+            .filter((project) => activeFilter === "active" ? project.active : !project.active)
+            .map((project) => project.id);
+          const currentIndex = visibleProjectIds.indexOf(projectId);
+          const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+          if (currentIndex === -1 || targetIndex < 0 || targetIndex >= visibleProjectIds.length) {
+            throw new Error("Project cannot be moved further.");
+          }
+
+          const reorderedVisible = [...visibleProjectIds];
+          const [movedItem] = reorderedVisible.splice(currentIndex, 1);
+          reorderedVisible.splice(targetIndex, 0, movedItem);
+
+          const finalOrder = [...reorderedVisible, ...allProjects.map((project) => project.id).filter((id) => !reorderedVisible.includes(id))];
+
+          await api.put("/api/projects/reorder", { order: finalOrder });
           showToast("Project order updated.", "success");
           window.location.reload();
         } catch (error) {
@@ -475,8 +517,9 @@ async function initProjectNewPage() {
   };
 
   fileInput.addEventListener("change", () => {
-    files = Array.from(fileInput.files || []);
+    files = mergeFiles(files, Array.from(fileInput.files || []));
     syncPreview();
+    fileInput.value = "";
   });
 
   form.addEventListener("submit", async (event) => {
@@ -522,17 +565,6 @@ async function initProjectNewPage() {
 }
 
 function renderProjectEditForm(project) {
-  const existingTiles = project.images.map((image, index) => `
-    <div class="photo-tile" data-photo-id="${image.id}" draggable="true">
-      <button type="button" class="photo-remove" data-remove-existing="${image.id}" aria-label="Remove photo">×</button>
-      <img src="${image.url}" alt="${escapeHtml(project.title)} image ${index + 1}" />
-      <div class="photo-tile__label">
-        <span>${index + 1}</span>
-        <span>Current</span>
-      </div>
-    </div>
-  `).join("");
-
   return `
     <div class="page-section">
       <div id="alertBox" class="form-alert"></div>
@@ -551,26 +583,21 @@ function renderProjectEditForm(project) {
 
         <div class="form-panel">
           <div class="upload-header">
-            <label class="field-label">Current photos</label>
+            <label class="field-label">Project photos</label>
             <span class="note">${project.images.length} total</span>
           </div>
-          <div id="existingPhotoGrid" class="photo-grid">${existingTiles}</div>
-        </div>
+          <div id="photoGrid" class="photo-grid"></div>
 
-        <div class="form-panel">
-          <div class="upload-header">
-            <label class="field-label" for="projectFiles">Add more photos</label>
-            <span class="note">Optional</span>
+          <div style="margin-top: 18px;">
+            <label class="upload-zone" for="projectFiles">
+              <input id="projectFiles" type="file" accept="image/*" multiple />
+              <div class="upload-content">
+                <div class="upload-icon">＋</div>
+                <strong>Add more photos</strong>
+                <small>Keep a minimum of 7 photos</small>
+              </div>
+            </label>
           </div>
-          <label class="upload-zone" for="projectFiles">
-            <input id="projectFiles" type="file" accept="image/*" multiple />
-            <div class="upload-content">
-              <div class="upload-icon">＋</div>
-              <strong>Add more photos</strong>
-              <small>Keep a minimum of 7 photos</small>
-            </div>
-          </label>
-          <div id="newPhotoPreview" class="photo-grid" style="margin-top: 16px;"></div>
         </div>
 
         <div class="sticky-actions">
@@ -588,7 +615,12 @@ async function initProjectEditPage() {
     return;
   }
 
-  const projectId = Number(getCurrentPath().split("/")[2]);
+  const projectId = getProjectIdFromPath();
+  if (!Number.isFinite(projectId) || projectId <= 0) {
+    window.location.href = "/admin/projects";
+    return;
+  }
+
   const projectData = await api.get(`/api/projects/${projectId}`);
   const project = projectData.project;
 
@@ -599,18 +631,53 @@ async function initProjectEditPage() {
   renderShell(user, "Edit project", renderProjectEditForm(project));
 
   const fileInput = document.getElementById("projectFiles");
-  const newPhotoPreview = document.getElementById("newPhotoPreview");
-  const existingPhotoGrid = document.getElementById("existingPhotoGrid");
+  const photoGrid = document.getElementById("photoGrid");
 
-  const renderNewFiles = () => {
-    newPhotoPreview.innerHTML = newFiles.length ? getPhotoPreviewMarkup(newFiles, "new") : "";
-    newPhotoPreview.querySelectorAll("[data-file-remove]").forEach((button) => {
+  const renderPhotoGrid = () => {
+    const visibleExisting = project.images.filter((image) => !removedIds.has(image.id));
+    const tiles = [
+      ...visibleExisting.map((image, index) => ({
+        kind: "existing",
+        id: image.id,
+        url: image.url,
+        alt: `${escapeHtml(project.title)} image ${index + 1}`,
+        label: `Photo ${index + 1}`,
+        meta: "Current",
+      })),
+      ...newFiles.map((file, index) => ({
+        kind: "new",
+        id: `new-${index}`,
+        url: URL.createObjectURL(file),
+        alt: `New photo ${index + 1}`,
+        label: `New ${index + 1}`,
+        meta: "New",
+      })),
+    ];
+
+    photoGrid.innerHTML = tiles.map((tile) => `
+      <div class="photo-tile" data-photo-id="${tile.id}" draggable="true">
+        <button type="button" class="photo-remove" data-remove-existing="${tile.id}" aria-label="Remove photo">×</button>
+        <img src="${tile.url}" alt="${tile.alt}" />
+        <div class="photo-tile__label">
+          <span>${tile.label}</span>
+          <span>${tile.meta}</span>
+        </div>
+      </div>
+    `).join("");
+
+    photoGrid.querySelectorAll("[data-remove-existing]").forEach((button) => {
       button.addEventListener("click", () => {
-        const key = button.dataset.fileRemove;
-        const index = Number(key.split("-").pop());
-        newFiles = newFiles.filter((_, itemIndex) => itemIndex !== index);
-        fileInput.value = "";
-        renderNewFiles();
+        const value = String(button.dataset.removeExisting);
+        if (value.startsWith("new-")) {
+          const index = Number(value.split("-").pop());
+          newFiles = newFiles.filter((_, itemIndex) => itemIndex !== index);
+          renderPhotoGrid();
+          return;
+        }
+
+        const imageId = Number(value);
+        removedIds.add(imageId);
+        renderPhotoGrid();
       });
     });
   };
@@ -631,75 +698,8 @@ async function initProjectEditPage() {
       showAlert(`You can add up to ${remainingCapacity} more photo${remainingCapacity === 1 ? "" : "s"}.`, "error");
     }
 
-    newFiles = [...newFiles, ...filesToAdd];
-    renderNewFiles();
-  };
-
-  const renderExistingPhotos = () => {
-    const tiles = project.images.map((image, index) => {
-      const isDeleted = removedIds.has(image.id);
-      return `
-        <div class="photo-tile ${isDeleted ? "is-removed" : ""}" data-photo-id="${image.id}" draggable="true">
-          <button type="button" class="photo-remove" data-remove-existing="${image.id}" aria-label="Remove photo">×</button>
-          <img src="${image.url}" alt="${escapeHtml(project.title)} image ${index + 1}" />
-          <div class="photo-tile__label">
-            <span>${isDeleted ? "Delete" : `Photo ${index + 1}`}</span>
-            <span>${isDeleted ? "Marked" : "Current"}</span>
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    existingPhotoGrid.innerHTML = tiles;
-
-    existingPhotoGrid.querySelectorAll("[data-remove-existing]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const imageId = Number(button.dataset.removeExisting);
-        if (removedIds.has(imageId)) {
-          removedIds.delete(imageId);
-        } else {
-          removedIds.add(imageId);
-        }
-        renderExistingPhotos();
-      });
-    });
-
-    existingPhotoGrid.querySelectorAll("[data-photo-id]").forEach((tile) => {
-      tile.addEventListener("dragstart", (event) => {
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("text/plain", String(tile.dataset.photoId));
-        tile.classList.add("is-dragging");
-      });
-
-      tile.addEventListener("dragend", () => {
-        tile.classList.remove("is-dragging");
-      });
-
-      tile.addEventListener("dragover", (event) => {
-        event.preventDefault();
-      });
-
-      tile.addEventListener("drop", (event) => {
-        event.preventDefault();
-        const fromId = Number(event.dataTransfer.getData("text/plain"));
-        const toId = Number(tile.dataset.photoId);
-        if (!fromId || !toId || fromId === toId) {
-          return;
-        }
-
-        const fromIndex = order.indexOf(fromId);
-        const toIndex = order.indexOf(toId);
-        if (fromIndex === -1 || toIndex === -1) {
-          return;
-        }
-
-        const reordered = [...order];
-        reordered.splice(fromIndex, 1);
-        reordered.splice(toIndex, 0, fromId);
-        order = reordered;
-        renderExistingPhotos();
-      });
-    });
+    newFiles = mergeFiles(newFiles, filesToAdd);
+    renderPhotoGrid();
   };
 
   fileInput.addEventListener("change", () => {
@@ -707,8 +707,7 @@ async function initProjectEditPage() {
     fileInput.value = "";
   });
 
-  renderExistingPhotos();
-  renderNewFiles();
+  renderPhotoGrid();
 
   document.getElementById("editProjectForm").addEventListener("submit", async (event) => {
     event.preventDefault();

@@ -537,6 +537,31 @@ img {
   gap: 18px;
 }
 
+.site-image-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.site-image-card {
+  min-width: 0;
+}
+
+.site-image-preview {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  background: var(--panel-soft);
+}
+
+.site-image-form {
+  gap: 12px;
+}
+
 .field-group {
   display: flex;
   flex-direction: column;
@@ -931,6 +956,10 @@ img {
 }
 
 @media (max-width: 720px) {
+  .site-image-grid {
+    grid-template-columns: 1fr;
+  }
+
   .project-card__footer {
     flex-direction: column;
     align-items: stretch;

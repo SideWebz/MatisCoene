@@ -1,0 +1,95 @@
+<section class="introduction" aria-label="Introduction">
+  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+
+  <a class="scroll-down" href="#main" aria-label="Scroll naar beneden">
+    <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+  </a>
+</section>
+
+<section id="main">
+  <div class="about-me">
+    <div class="about-me__image">
+      <img src="{aboutImage}" alt="" />
+    </div>
+
+    <div class="about-me__text">
+      <h2>About Me</h2>
+
+      <h3>Designer &amp; Developer</h3>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+
+      <h3>Designer &amp; Developer</h3>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+    </div>
+  </div>
+</section>
+
+<section id="projects" class="projects" aria-label="Projecten">
+  <p id="projects-status" class="projects__status" role="status" aria-live="polite">
+    Projecten laden...
+  </p>
+  <div id="projects-list" class="projects__list"></div>
+</section>
+
+<script src="/js/projects.js" defer></script>
+
+<section id="approach" class="approach" aria-labelledby="approach-title">
+  <h2 id="approach-title" class="approach__title">Aanpak</h2>
+
+  <div class="approach__grid">
+    <article class="approach-card">
+      <h3>Titel een</h3>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+      <img class="approach-card__logo" src="/assets/brand/MatisCoene_Logo.png" alt="" />
+    </article>
+
+    <article class="approach-card">
+      <h3>Titel twee</h3>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+      <img class="approach-card__logo" src="/assets/brand/MatisCoene_Logo.png" alt="" />
+    </article>
+
+    <article class="approach-card">
+      <h3>Titel drie</h3>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+      <img class="approach-card__logo" src="/assets/brand/MatisCoene_Logo.png" alt="" />
+    </article>
+  </div>
+</section>
+
+<section id="contact" class="contact" aria-labelledby="contact-title">
+  <div class="contact__form-wrap">
+    <h2 id="contact-title" class="contact__title">Contact</h2>
+
+    <form class="contact-form" action="#" method="post">
+      <div class="contact-form__field">
+        <label for="contact-name">Naam</label>
+        <input id="contact-name" name="name" type="text" autocomplete="name" required />
+      </div>
+
+      <div class="contact-form__field">
+        <label for="contact-email">E-mail</label>
+        <input id="contact-email" name="email" type="email" autocomplete="email" required />
+      </div>
+
+      <div class="contact-form__field">
+        <label for="contact-phone">Telefoon</label>
+        <input id="contact-phone" name="phone" type="tel" autocomplete="tel" />
+      </div>
+
+      <div class="contact-form__field">
+        <label for="contact-project">Projectbeschrijving</label>
+        <textarea id="contact-project" name="project" rows="5" required></textarea>
+      </div>
+
+      <button type="submit" class="contact-form__submit">Verstuur</button>
+    </form>
+  </div>
+
+  <div class="contact__image">
+    <img src="{contactImage}" alt="" />
+  </div>
+</section>

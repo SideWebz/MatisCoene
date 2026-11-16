@@ -61,14 +61,16 @@ Als de database nog niet bestaat, wordt deze automatisch aangemaakt.
 
 ## Applicatie starten
 
+De serverpoort staat in het `.env`-bestand in de projectroot. De standaardwaarde is `4000`.
+
 ```bash
 deno task start
 ```
 
 Open daarna in de browser:
 
-- Publieke site: http://localhost:8000/
-- Backoffice: http://localhost:8000/admin/login
+- Publieke site: http://localhost:4000/
+- Backoffice: http://localhost:4000/admin/login
 
 ## Default login
 

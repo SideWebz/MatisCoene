@@ -3,9 +3,16 @@ import { initDatabase } from "./database/db.ts";
 import { handleAuthRoutes } from "./routes/auth.ts";
 import { handleProjectRoutes } from "./routes/projects.ts";
 import { handlePublicRoutes } from "./routes/public.ts";
+import { getPublicSiteImageUrls, handleSiteImageRoutes } from "./routes/site-images.ts";
 import { handleUsersRoutes } from "./routes/users.ts";
 
 const appRoot = Deno.cwd();
+const portValue = Deno.env.get("PORT") ?? "4000";
+const port = Number(portValue);
+
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error(`Invalid PORT value "${portValue}". Use a number between 1 and 65535.`);
+}
 
 function getContentType(filePath: string): string {
   const extension = filePath.split(".").pop()?.toLowerCase() ?? "";
@@ -40,6 +47,34 @@ async function serveFile(filePath: string): Promise<Response> {
   }
 }
 
+async function servePublicIndex(): Promise<Response> {
+  const publicRoot = `${appRoot}/public`;
+  const [template, head, header, main, footer] = await Promise.all([
+    Deno.readTextFile(`${publicRoot}/index.html`),
+    Deno.readTextFile(`${publicRoot}/sections/head.html`),
+    Deno.readTextFile(`${publicRoot}/sections/header.html`),
+    Deno.readTextFile(`${publicRoot}/sections/main.html`),
+    Deno.readTextFile(`${publicRoot}/sections/footer.html`),
+  ]);
+  const images = getPublicSiteImageUrls();
+  const sections = {
+    head,
+    header: header.replace("{headerImage}", images.header),
+    main: main
+      .replace("{aboutImage}", images.about)
+      .replace("{contactImage}", images.contact),
+    footer,
+  };
+  const html = template.replace(
+    /\{(head|header|main|footer)\}/g,
+    (_match, section: keyof typeof sections) => sections[section],
+  );
+
+  return new Response(html, {
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
 function resolveRequestPath(pathname: string, baseDir: string): string {
   const normalized = pathname.replace(/^\/+/, "").replace(/\/+/g, "/");
   if (!normalized) {
@@ -52,8 +87,8 @@ async function handleStaticResource(request: Request): Promise<Response | null> 
   const url = new URL(request.url);
   const pathname = url.pathname;
 
-  if (pathname === "/") {
-    return await serveFile(`${appRoot}/public/index.html`);
+  if (pathname === "/" || pathname === "/index.html") {
+    return await servePublicIndex();
   }
 
   if (pathname.startsWith("/uploads/")) {
@@ -72,6 +107,10 @@ async function handleStaticResource(request: Request): Promise<Response | null> 
 
     if (pathname === "/admin/profile") {
       return await serveFile(`${appRoot}/admin/profile.html`);
+    }
+
+    if (pathname === "/admin/site-images") {
+      return await serveFile(`${appRoot}/admin/site-images/index.html`);
     }
 
     if (pathname === "/admin/projects") {
@@ -130,7 +169,7 @@ async function handleAdminAccess(request: Request): Promise<Response | null> {
 const database = await initDatabase();
 (globalThis as typeof globalThis & { appDatabase?: unknown }).appDatabase = database;
 
-Deno.serve(async (request: Request) => {
+Deno.serve({ port }, async (request: Request) => {
   const url = new URL(request.url);
   const pathname = url.pathname;
 
@@ -148,6 +187,11 @@ Deno.serve(async (request: Request) => {
     const projectResponse = await handleProjectRoutes(request);
     if (projectResponse) {
       return projectResponse;
+    }
+
+    const siteImageResponse = await handleSiteImageRoutes(request);
+    if (siteImageResponse) {
+      return siteImageResponse;
     }
 
     const userResponse = await handleUsersRoutes(request);

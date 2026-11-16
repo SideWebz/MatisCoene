@@ -126,6 +126,7 @@ function getProjectIdFromPath() {
 function getSidebarLinks(user) {
   const links = [
     { href: "/admin/projects", label: "Projects", icon: "grid-3x3-gap" },
+    { href: "/admin/site-images", label: "Website images", icon: "images" },
     { href: "/admin/profile", label: "My account", icon: "person-circle" },
   ];
 
@@ -932,6 +933,90 @@ async function initProfilePage() {
   });
 }
 
+async function initSiteImagesPage() {
+  const user = await requireSession();
+  if (!user) {
+    return;
+  }
+
+  const data = await api.get("/api/site-images");
+  const imageTypes = [
+    { key: "header", title: "Header image", description: "The image shown in the website header." },
+    { key: "about", title: "About Me image", description: "The image shown in the About Me section." },
+    { key: "contact", title: "Contact image", description: "The image shown beside the contact section." },
+  ];
+
+  renderShell(user, "Website images", `
+    <div class="page-section">
+      <div class="site-image-grid">
+        ${imageTypes.map(({ key, title, description }) => `
+          <section class="form-panel site-image-card" aria-labelledby="${key}ImageTitle">
+            <h2 id="${key}ImageTitle" class="h5 mb-2">${title}</h2>
+            <p class="text-muted mb-3">${description}</p>
+            <img class="site-image-preview" data-site-image-preview="${key}" src="${escapeHtml(data.images[key])}" alt="Current ${title.toLowerCase()}" />
+            <form class="modern-form site-image-form" data-site-image-form="${key}">
+              <div class="field-group">
+                <label class="field-label" for="${key}ImageFile">Choose a new image</label>
+                <input id="${key}ImageFile" class="form-control" type="file" accept="image/png,image/jpeg,image/gif,image/webp" required />
+                <small class="text-muted">PNG, JPG, GIF or WEBP. Maximum 5MB.</small>
+              </div>
+              <div class="sticky-actions">
+                <button class="primary-action" type="submit"><i class="bi bi-check-lg"></i> Save image</button>
+              </div>
+            </form>
+          </section>
+        `).join("")}
+      </div>
+    </div>
+  `);
+
+  imageTypes.forEach(({ key }) => {
+    const form = document.querySelector(`[data-site-image-form="${key}"]`);
+    const input = form.querySelector('input[type="file"]');
+    const preview = document.querySelector(`[data-site-image-preview="${key}"]`);
+    let previewUrl = null;
+
+    input.addEventListener("change", () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        previewUrl = null;
+      }
+
+      const file = input.files[0];
+      if (file) {
+        previewUrl = URL.createObjectURL(file);
+        preview.src = previewUrl;
+      }
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const file = input.files[0];
+      if (!file) {
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("image", key);
+      formData.append("file", file);
+
+      try {
+        const result = await api.post("/api/site-images", formData, false);
+        preview.src = result.image;
+        input.value = "";
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+          previewUrl = null;
+        }
+        const imageTitle = imageTypes.find((imageType) => imageType.key === key)?.title ?? "Website";
+        showToast(result.message || `${imageTitle} updated.`, result.warning ? "error" : "success");
+      } catch (error) {
+        showToast(error.message || "Unable to update website image.", "error");
+      }
+    });
+  });
+}
+
 async function initPage() {
   const path = getCurrentPath();
 
@@ -967,6 +1052,11 @@ async function initPage() {
 
   if (path === "/admin/profile") {
     initProfilePage();
+    return;
+  }
+
+  if (path === "/admin/site-images") {
+    initSiteImagesPage();
     return;
   }
 }

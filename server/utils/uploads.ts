@@ -76,6 +76,38 @@ export async function saveUploadedProjectImage(file: File): Promise<{ filename: 
   return { filename, path: targetPath };
 }
 
+export async function saveUploadedSiteImage(file: File): Promise<{ filename: string; path: string }> {
+  const validation = validateUploadedImage(file);
+  if (!validation.valid) {
+    throw new Error(validation.message);
+  }
+
+  const extension = getSafeExtensionFromMime(file.type.toLowerCase());
+  const filename = `${crypto.randomUUID()}.${extension}`;
+  const uploadDir = `${Deno.cwd()}/uploads/site`;
+  await Deno.mkdir(uploadDir, { recursive: true });
+  const targetPath = `${uploadDir}/${filename}`;
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  await Deno.writeFile(targetPath, bytes);
+
+  return { filename, path: targetPath };
+}
+
+export async function removeUploadedSiteImage(filename: string): Promise<void> {
+  if (!/^[a-f0-9-]+\.(?:jpg|png|webp|gif)$/i.test(filename)) {
+    return;
+  }
+
+  try {
+    await Deno.remove(`${Deno.cwd()}/uploads/site/${filename}`);
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) {
+      throw error;
+    }
+  }
+}
+
 export async function removeUploadedProjectImage(filename: string): Promise<void> {
   if (!filename || filename.includes("../") || filename.includes("..\\")) {
     return;

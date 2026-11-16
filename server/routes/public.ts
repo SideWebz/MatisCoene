@@ -1,4 +1,5 @@
 import { getDatabase } from "../database/db.ts";
+import { getPublicSiteImageUrls } from "./site-images.ts";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -38,6 +39,10 @@ export async function handlePublicRoutes(request: Request): Promise<Response | n
     });
 
     return jsonResponse({ projects: payload });
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/public/site-images") {
+    return jsonResponse({ images: getPublicSiteImageUrls() });
   }
 
   return null;

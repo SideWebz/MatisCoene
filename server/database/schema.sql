@@ -27,6 +27,12 @@ CREATE TABLE IF NOT EXISTS project_images (
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS site_images (
+  image_key TEXT PRIMARY KEY CHECK(image_key IN ('header', 'about', 'contact')),
+  filename TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
   user_id INTEGER NOT NULL,

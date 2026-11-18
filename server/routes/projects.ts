@@ -231,7 +231,7 @@ export async function handleProjectRoutes(request: Request): Promise<Response | 
   if (request.method === "PUT" && url.pathname === "/api/projects/reorder") {
     try {
       const body = await request.json().catch(() => ({}));
-      const order = Array.isArray(body?.order) ? body.order.map(Number) : [];
+      const order: number[] = Array.isArray(body?.order) ? body.order.map((id: unknown) => Number(id)) : [];
 
       if (!order.length) {
         return jsonResponse({ message: "No project order was provided." }, 400);

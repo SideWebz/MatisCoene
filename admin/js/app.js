@@ -1,5 +1,7 @@
 const MIN_PROJECT_IMAGES = 7;
 const MAX_PROJECT_IMAGES = 20;
+const MAX_IMAGE_DIMENSION = 2400;
+const IMAGE_QUALITY = 0.82;
 
 const api = {
   async get(url) {
@@ -67,6 +69,48 @@ function mergeFiles(existingFiles, incomingFiles) {
   }
 
   return merged;
+}
+
+async function compressImageFile(file) {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type.toLowerCase())) {
+    return file;
+  }
+
+  const bitmap = await createImageBitmap(file);
+  try {
+    const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("Unable to prepare this image for upload.");
+    }
+
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const compressedBlob = await new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("Unable to compress this image."));
+        }
+      }, "image/webp", IMAGE_QUALITY);
+    });
+
+    if (compressedBlob.type !== "image/webp" || compressedBlob.size >= file.size) {
+      return file;
+    }
+
+    const baseName = file.name.replace(/\.[^.]+$/, "");
+    return new File([compressedBlob], `${baseName || "image"}.webp`, {
+      type: "image/webp",
+      lastModified: file.lastModified,
+    });
+  } finally {
+    bitmap.close();
+  }
 }
 
 function escapeHtml(value) {
@@ -486,7 +530,7 @@ async function initProjectNewPage() {
             <div class="upload-content">
               <div class="upload-icon">＋</div>
               <strong>Add project photos</strong>
-              <small>Choose 7 to 20 images</small>
+              <small>Choose 7 to 20 images. Photos are compressed automatically; max 10MB each. GIF animation is preserved.</small>
             </div>
           </label>
           <div id="projectPreview" class="photo-grid" style="margin-top: 16px;"></div>
@@ -543,9 +587,10 @@ async function initProjectNewPage() {
     const formData = new FormData();
     formData.append("title", title);
     formData.append("text", text);
-    files.forEach((file) => formData.append("files", file));
 
     try {
+      const preparedFiles = await Promise.all(files.map(compressImageFile));
+      preparedFiles.forEach((file) => formData.append("files", file));
       const response = await fetch("/api/projects", {
         method: "POST",
         credentials: "same-origin",
@@ -595,7 +640,7 @@ function renderProjectEditForm(project) {
               <div class="upload-content">
                 <div class="upload-icon">＋</div>
                 <strong>Add more photos</strong>
-                <small>Keep a minimum of 7 photos</small>
+                <small>Keep at least 7 photos. Images are compressed automatically; max 10MB each.</small>
               </div>
             </label>
           </div>
@@ -733,9 +778,10 @@ async function initProjectEditPage() {
     formData.append("title", title);
     formData.append("text", text);
     formData.append("remove_ids", Array.from(removedIds).join(","));
-    newFiles.forEach((file) => formData.append("files", file));
 
     try {
+      const preparedFiles = await Promise.all(newFiles.map(compressImageFile));
+      preparedFiles.forEach((file) => formData.append("files", file));
       const response = await fetch(`/api/projects/${projectId}`, {
         method: "PUT",
         credentials: "same-origin",
@@ -958,7 +1004,7 @@ async function initSiteImagesPage() {
               <div class="field-group">
                 <label class="field-label" for="${key}ImageFile">Choose a new image</label>
                 <input id="${key}ImageFile" class="form-control" type="file" accept="image/png,image/jpeg,image/gif,image/webp" required />
-                <small class="text-muted">PNG, JPG, GIF or WEBP. Maximum 5MB.</small>
+                <small class="text-muted">PNG, JPG, GIF or WEBP. Photos are compressed automatically; maximum 10MB per file. GIF animation is preserved.</small>
               </div>
               <div class="sticky-actions">
                 <button class="primary-action" type="submit"><i class="bi bi-check-lg"></i> Save image</button>
@@ -1000,12 +1046,12 @@ async function initSiteImagesPage() {
 
       const formData = new FormData();
       formData.append("image", key);
-      formData.append("file", file);
       const originalButtonMarkup = submitButton.innerHTML;
       submitButton.disabled = true;
       submitButton.innerHTML = '<i class="bi bi-arrow-repeat"></i> Saving...';
 
       try {
+        formData.append("file", await compressImageFile(file));
         const result = await api.post("/api/site-images", formData, false);
         preview.src = result.image;
         input.value = "";

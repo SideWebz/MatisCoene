@@ -1,6 +1,6 @@
 export const MAX_PROJECT_IMAGES = 20;
 export const MIN_PROJECT_IMAGES = 7;
-export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 const allowedMimeTypes = new Set([
   "image/jpeg",
@@ -19,7 +19,7 @@ export function validateUploadedImage(file: File): { valid: true } | { valid: fa
   }
 
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    return { valid: false, message: "Each image must be smaller than 5MB." };
+    return { valid: false, message: "Each image must be smaller than 10MB." };
   }
 
   const mimeType = file.type.toLowerCase();

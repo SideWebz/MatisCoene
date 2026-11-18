@@ -96,29 +96,30 @@ async function compressImageFile(file) {
       throw new Error("Unable to prepare this image for upload.");
     }
 
+    const outputTypes = mimeType === "image/jpeg"
+      ? ["image/webp", "image/jpeg"]
+      : ["image/webp", "image/png"];
+
     while (true) {
       canvas.width = width;
       canvas.height = height;
       context.drawImage(bitmap, 0, 0, width, height);
 
-      for (const quality of IMAGE_QUALITIES) {
-        const compressedBlob = await new Promise((resolve, reject) => {
-          canvas.toBlob((blob) => {
-            if (blob) {
-              resolve(blob);
-            } else {
-              reject(new Error("Unable to compress this image."));
-            }
-          }, "image/webp", quality);
-        });
+      for (const outputType of outputTypes) {
+        const qualities = outputType === "image/png" ? [undefined] : IMAGE_QUALITIES;
+        for (const quality of qualities) {
+          const compressedBlob = await new Promise((resolve) => {
+            canvas.toBlob(resolve, outputType, quality);
+          });
 
-        if (compressedBlob.type !== "image/webp") {
-          throw new Error("Your browser cannot compress images to WEBP.");
-        }
-        if (compressedBlob.size < MAX_UPLOAD_SIZE_BYTES) {
+          if (!compressedBlob || compressedBlob.type !== outputType || compressedBlob.size >= MAX_UPLOAD_SIZE_BYTES) {
+            continue;
+          }
+
+          const extension = outputType === "image/jpeg" ? "jpg" : outputType.split("/")[1];
           const baseName = file.name.replace(/\.[^.]+$/, "");
-          return new File([compressedBlob], `${baseName || "image"}.webp`, {
-            type: "image/webp",
+          return new File([compressedBlob], `${baseName || "image"}.${extension}`, {
+            type: outputType,
             lastModified: file.lastModified,
           });
         }

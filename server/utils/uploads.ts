@@ -65,7 +65,7 @@ export async function saveUploadedProjectImage(file: File): Promise<{ filename: 
   }
 
   const extension = getSafeExtensionFromMime(file.type.toLowerCase());
-  const filename = `${crypto.randomUUID()}.${extension}`;
+  const filename = `matiscoene-${crypto.randomUUID()}.${extension}`;
   const uploadDir = `${Deno.cwd()}/uploads/projects`;
   await Deno.mkdir(uploadDir, { recursive: true });
   const targetPath = `${uploadDir}/${filename}`;
@@ -83,7 +83,7 @@ export async function saveUploadedSiteImage(file: File): Promise<{ filename: str
   }
 
   const extension = getSafeExtensionFromMime(file.type.toLowerCase());
-  const filename = `${crypto.randomUUID()}.${extension}`;
+  const filename = `matiscoene-${crypto.randomUUID()}.${extension}`;
   const uploadDir = `${Deno.cwd()}/uploads/site`;
   await Deno.mkdir(uploadDir, { recursive: true });
   const targetPath = `${uploadDir}/${filename}`;
@@ -95,7 +95,7 @@ export async function saveUploadedSiteImage(file: File): Promise<{ filename: str
 }
 
 export async function removeUploadedSiteImage(filename: string): Promise<void> {
-  if (!/^[a-f0-9-]+\.(?:jpg|png|webp|gif)$/i.test(filename)) {
+  if (!/^(?:matiscoene-)?[a-f0-9-]+\.(?:jpg|png|webp|gif)$/i.test(filename)) {
     return;
   }
 

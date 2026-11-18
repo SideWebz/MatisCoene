@@ -973,6 +973,7 @@ async function initSiteImagesPage() {
   imageTypes.forEach(({ key }) => {
     const form = document.querySelector(`[data-site-image-form="${key}"]`);
     const input = form.querySelector('input[type="file"]');
+    const submitButton = form.querySelector('button[type="submit"]');
     const preview = document.querySelector(`[data-site-image-preview="${key}"]`);
     let previewUrl = null;
 
@@ -993,12 +994,16 @@ async function initSiteImagesPage() {
       event.preventDefault();
       const file = input.files[0];
       if (!file) {
+        showToast("Choose an image before saving.", "error");
         return;
       }
 
       const formData = new FormData();
       formData.append("image", key);
       formData.append("file", file);
+      const originalButtonMarkup = submitButton.innerHTML;
+      submitButton.disabled = true;
+      submitButton.innerHTML = '<i class="bi bi-arrow-repeat"></i> Saving...';
 
       try {
         const result = await api.post("/api/site-images", formData, false);
@@ -1012,6 +1017,9 @@ async function initSiteImagesPage() {
         showToast(result.message || `${imageTitle} updated.`, result.warning ? "error" : "success");
       } catch (error) {
         showToast(error.message || "Unable to update website image.", "error");
+      } finally {
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonMarkup;
       }
     });
   });

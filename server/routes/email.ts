@@ -9,6 +9,7 @@ import {
   type EmailSettings,
   wrapEmailHtml,
 } from "../services/email-templates.ts";
+import { isAcceptedTurnstileVerification } from "../services/turnstile.ts";
 
 const MAX_BODY_BYTES = 16_384;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
@@ -180,12 +181,21 @@ function createTransport() {
 
 function logMailFailure(label: string, error: unknown): void {
   const details = error && typeof error === "object"
-    ? error as { code?: unknown; responseCode?: unknown; command?: unknown }
+    ? error as { code?: unknown; responseCode?: unknown; command?: unknown; message?: unknown }
     : {};
+  let message = typeof details.message === "string" ? details.message : "Unknown mail error.";
+  for (const secret of [
+    Deno.env.get("MAIL_PASSWORD"),
+    Deno.env.get("MAIL_USERNAME"),
+    Deno.env.get("TURNSTILE_SECRET_KEY"),
+  ]) {
+    if (secret) message = message.split(secret).join("[redacted]");
+  }
   console.error(label, {
     code: typeof details.code === "string" ? details.code : "UNKNOWN",
     responseCode: typeof details.responseCode === "number" ? details.responseCode : undefined,
     command: typeof details.command === "string" ? details.command : undefined,
+    message,
   });
 }
 
@@ -237,17 +247,16 @@ async function handleContactSubmission(request: Request, ip: string): Promise<Re
     return jsonResponse({ message: "Controleer je gegevens en probeer het opnieuw." }, 400);
   }
 
-  const turnstileToken = cleanText(payload.turnstileToken, 2048);
+  const turnstileToken = cleanText(payload["cf-turnstile-response"], 2048);
   const turnstileSecret = Deno.env.get("TURNSTILE_SECRET_KEY") ?? "";
   if (!turnstileToken || !turnstileSecret) {
-    return jsonResponse({ message: "Spamcontrole is momenteel niet beschikbaar." }, 503);
+    return jsonResponse({ message: "Spamcontrole is momenteel niet beschikbaar." }, turnstileSecret ? 403 : 503);
   }
 
   try {
     const verificationBody = new URLSearchParams({
       secret: turnstileSecret,
       response: turnstileToken,
-      remoteip: ip,
     });
     const verificationResponse = await fetch(
       "https://challenges.cloudflare.com/turnstile/v0/siteverify",
@@ -263,8 +272,43 @@ async function handleContactSubmission(request: Request, ip: string): Promise<Re
       return jsonResponse({ message: "Spamcontrole is momenteel niet beschikbaar." }, 503);
     }
     const verification = await verificationResponse.json();
+    const expectedHostnames = (Deno.env.get("TURNSTILE_EXPECTED_HOSTNAMES") ??
+      "matiscoene.be,matiscoene.sidewebz.be")
+      .split(",")
+      .map((hostname) => hostname.trim().toLowerCase())
+      .filter(Boolean);
+    const errorCodes = Array.isArray(verification?.["error-codes"])
+      ? verification["error-codes"].filter((code: unknown) => typeof code === "string").slice(0, 8)
+      : [];
+    const verifiedHostname = typeof verification?.hostname === "string"
+      ? verification.hostname.toLowerCase()
+      : "";
     if (verification?.success !== true) {
-      return jsonResponse({ message: "Spamcontrole mislukt. Probeer het opnieuw." }, 400);
+      const configurationErrorCodes = new Set([
+        "missing-input-secret",
+        "invalid-input-secret",
+        "internal-error",
+      ]);
+      const serviceUnavailable = errorCodes.some((code: string) => configurationErrorCodes.has(code));
+      console[serviceUnavailable ? "error" : "warn"](
+        "Cloudflare Turnstile verification rejected a submission.",
+        { errorCodes },
+      );
+      return jsonResponse(
+        {
+          message: serviceUnavailable
+            ? "Spamcontrole is momenteel niet beschikbaar."
+            : "Spamcontrole mislukt. Vernieuw de controle en probeer opnieuw.",
+        },
+        serviceUnavailable ? 503 : 403,
+      );
+    }
+
+    if (!isAcceptedTurnstileVerification(verification, expectedHostnames)) {
+      console.warn("Cloudflare Turnstile verification rejected a submission.", {
+        hostname: verifiedHostname || undefined,
+      });
+      return jsonResponse({ message: "Spamcontrole mislukt. Vernieuw de controle en probeer opnieuw." }, 403);
     }
   } catch (error) {
     console.error(
@@ -301,7 +345,7 @@ async function handleContactSubmission(request: Request, ip: string): Promise<Re
     });
   } catch (error) {
     logMailFailure("Contact email delivery failed.", error);
-    return jsonResponse({ message: "E-mail verzenden is momenteel niet mogelijk." }, 503);
+    return jsonResponse({ message: "E-mail verzenden is momenteel niet mogelijk." }, 502);
   }
 
   if (settings.autoReplyEnabled) {

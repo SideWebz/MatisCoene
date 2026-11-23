@@ -47,7 +47,7 @@ contactForm?.addEventListener("submit", async (event) => {
   const formData = new FormData(contactForm);
   const payload = Object.fromEntries(formData.entries());
   payload.project = payload.project || "";
-  payload.turnstileToken = turnstileToken;
+  payload["cf-turnstile-response"] = turnstileToken;
 
   try {
     const response = await fetch(contactForm.action, {

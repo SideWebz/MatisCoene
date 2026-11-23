@@ -77,10 +77,9 @@ MAIL_TO_ADDRESS=vragen@matiscoene.be
 MAIL_AUTO_REPLY_ENABLED=true
 TURNSTILE_SITE_KEY=jouw-cloudflare-turnstile-site-key
 TURNSTILE_SECRET_KEY=jouw-cloudflare-turnstile-secret-key
-APP_ORIGIN=https://jouw-publieke-domein.be
 ```
 
-Gebruik voor `MAIL_PASSWORD` een Google App Password (niet je gewone Google-wachtwoord). Maak de Turnstile-sleutels aan in Cloudflare en stel het domein van je website in bij de widget. De site key is publiek; de secret key blijft uitsluitend op de server. Stel `APP_ORIGIN` achter een HTTPS-proxy in op de publieke origin (bijvoorbeeld `https://matiscoene.sidewebz.be`); lokaal mag deze leeg blijven. `.env` is uitgesloten van Git. Zonder beide Turnstile-sleutels wordt het contactformulier uit veiligheid niet verzonden. De automatische antwoordmail kan daarna ook aan- of uitgezet worden vanuit **Email** in de backoffice; die opgeslagen keuze heeft voorrang op `MAIL_AUTO_REPLY_ENABLED`.
+Gebruik voor `MAIL_PASSWORD` een Google App Password (niet je gewone Google-wachtwoord). Maak de Turnstile-sleutels aan in Cloudflare en stel het domein van je website in bij de widget. De site key is publiek; de secret key blijft uitsluitend op de server. `.env` is uitgesloten van Git. Zonder beide Turnstile-sleutels wordt het contactformulier uit veiligheid niet verzonden. De automatische antwoordmail kan daarna ook aan- of uitgezet worden vanuit **Email** in de backoffice; die opgeslagen keuze heeft voorrang op `MAIL_AUTO_REPLY_ENABLED`.
 
 ```bash
 deno task start

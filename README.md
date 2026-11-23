@@ -69,11 +69,11 @@ Maak `.env` aan op basis van `.env.example` en vul de Gmail SMTP-gegevens in:
 MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
 MAIL_ENCRYPTION=tls
-MAIL_USERNAME=jouwgmailadres@gmail.com
+MAIL_USERNAME=contact@matiscoene.com
 MAIL_PASSWORD=jouw-google-app-password
-MAIL_FROM_ADDRESS=jouwgmailadres@gmail.com
+MAIL_FROM_ADDRESS=contact@matiscoene.com
 MAIL_FROM_NAME="Matis Coene"
-MAIL_TO_ADDRESS=vragen@matiscoene.be
+MAIL_TO_ADDRESS=contact@matiscoene.com
 MAIL_AUTO_REPLY_ENABLED=true
 TURNSTILE_SITE_KEY=jouw-cloudflare-turnstile-site-key
 TURNSTILE_SECRET_KEY=jouw-cloudflare-turnstile-secret-key

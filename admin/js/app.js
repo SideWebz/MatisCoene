@@ -1129,7 +1129,7 @@ async function initEmailSettingsPage() {
         <section class="form-panel email-settings-card">
           <div>
             <h2 class="h5 mb-2">Ontvangen contactformulier-e-mails</h2>
-            <p class="text-muted mb-3">Deze template wordt naar vragen@matiscoene.be gestuurd.</p>
+            <p class="text-muted mb-3">Deze template wordt naar contact@matiscoene.com gestuurd.</p>
           </div>
           <div class="field-group">
             <label class="field-label" for="inboxSubject">E-mailonderwerp</label>

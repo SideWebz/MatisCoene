@@ -332,7 +332,7 @@ async function handleContactSubmission(request: Request, ip: string): Promise<Re
     }).format(new Date()),
   };
   const settings = getSettings();
-  const recipient = Deno.env.get("MAIL_TO_ADDRESS") ?? "vragen@matiscoene.be";
+  const recipient = Deno.env.get("MAIL_TO_ADDRESS") ?? "contact@matiscoene.com";
 
   try {
     if (!validEmail(recipient)) {

@@ -9,11 +9,11 @@ export interface AuthUser {
 const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
 
 export function createSessionCookie(sessionId: string): string {
-  return `session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)};`;
+  return `session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)};`;
 }
 
 export function clearSessionCookie(): string {
-  return "session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0;";
+  return "session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0;";
 }
 
 export function getSessionIdFromRequest(request: Request): string | null {

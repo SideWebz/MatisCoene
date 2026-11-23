@@ -189,6 +189,16 @@ function logMailFailure(label: string, error: unknown): void {
   });
 }
 
+function isAllowedOrigin(origin: string, requestUrl: URL): boolean {
+  const configuredOrigin = Deno.env.get("APP_ORIGIN")?.trim();
+  try {
+    const expectedOrigin = new URL(configuredOrigin || requestUrl.origin).origin;
+    return new URL(origin).origin === expectedOrigin;
+  } catch {
+    return false;
+  }
+}
+
 async function sendMail(options: {
   to: string;
   subject: string;
@@ -346,7 +356,7 @@ export async function handleEmailRoutes(request: Request, ip: string): Promise<R
     return jsonResponse({ message: "Method not allowed." }, 405);
   }
   const origin = request.headers.get("origin");
-  if (origin && origin !== url.origin) {
+  if (origin && !isAllowedOrigin(origin, url)) {
     return jsonResponse({ message: "Invalid request origin." }, 403);
   }
   if (!request.headers.get("content-type")?.toLowerCase().includes("application/json")) {

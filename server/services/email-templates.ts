@@ -18,7 +18,7 @@ export interface EmailSettings {
 export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
   inboxSubject: "Nieuw contactbericht: {{name}}",
   inboxTemplate: `<h1>Nieuw bericht via de website</h1>
-<p>Je ontving een nieuw contactbericht via matiscoene.be.</p>
+<p>Je ontving een nieuw contactbericht via matiscoene.com.</p>
 <p><strong>Naam:</strong> {{name}}<br>
 <strong>E-mailadres:</strong> {{email}}<br>
 <strong>Telefoon:</strong> {{phone}}<br>
@@ -94,7 +94,7 @@ export function wrapEmailHtml(content: string): string {
     <div style="background:#fff;padding:28px;border:1px solid #e7e7e5;border-top:0;border-radius:0 0 16px 16px;line-height:1.65;overflow-wrap:anywhere;">
       <div style="font-size:15px;">${content}</div>
     </div>
-    <p style="margin:16px 0;color:#6b7280;text-align:center;font-size:12px;">Matis Coene · matiscoene.be</p>
+    <p style="margin:16px 0;color:#6b7280;text-align:center;font-size:12px;">Matis Coene · matiscoene.com</p>
   </div>
 </body></html>`;
 }

@@ -152,12 +152,12 @@ function saveSettings(settings: EmailSettings): void {
 }
 
 function createTransport() {
-  const host = Deno.env.get("MAIL_HOST") ?? "smtp.gmail.com";
+  const host = Deno.env.get("MAIL_HOST")?.trim() || "smtp.gmail.com";
   const port = Number(Deno.env.get("MAIL_PORT") ?? "587");
   const encryption = (Deno.env.get("MAIL_ENCRYPTION") ?? "tls").toLowerCase();
-  const username = Deno.env.get("MAIL_USERNAME") ?? "";
-  const password = Deno.env.get("MAIL_PASSWORD") ?? "";
-  const fromAddress = Deno.env.get("MAIL_FROM_ADDRESS") || username;
+  const username = Deno.env.get("MAIL_USERNAME")?.trim() ?? "";
+  const password = (Deno.env.get("MAIL_PASSWORD") ?? "").replace(/\s/g, "");
+  const fromAddress = Deno.env.get("MAIL_FROM_ADDRESS")?.trim() || username;
 
   if (!Number.isInteger(port) || port < 1 || port > 65535 || encryption !== "tls") {
     throw new Error("Invalid SMTP configuration.");
@@ -209,7 +209,8 @@ async function sendMail(options: {
   try {
     await transport.sendMail({
       from: {
-        address: Deno.env.get("MAIL_FROM_ADDRESS") || Deno.env.get("MAIL_USERNAME") || "",
+        address: Deno.env.get("MAIL_FROM_ADDRESS")?.trim() ||
+          Deno.env.get("MAIL_USERNAME")?.trim() || "",
         name: (Deno.env.get("MAIL_FROM_NAME") ?? "Matis Coene").replace(/[\r\n]+/g, " ").slice(0, 100),
       },
       to: options.to,

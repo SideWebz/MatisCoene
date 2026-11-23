@@ -80,7 +80,7 @@ TURNSTILE_SECRET_KEY=jouw-cloudflare-turnstile-secret-key
 TURNSTILE_EXPECTED_HOSTNAMES=matiscoene.be,matiscoene.sidewebz.be
 ```
 
-Gebruik voor `MAIL_PASSWORD` een Google App Password (niet je gewone Google-wachtwoord). Maak de Turnstile-sleutels aan in Cloudflare en stel beide gebruikte hostnames in bij de widget. De backend accepteert alleen siteverify-antwoorden met `success: true` én een hostname uit `TURNSTILE_EXPECTED_HOSTNAMES`. De site key is publiek; de secret key blijft uitsluitend op de server. `.env` is uitgesloten van Git. Zonder beide Turnstile-sleutels wordt het contactformulier uit veiligheid niet verzonden. De automatische antwoordmail kan daarna ook aan- of uitgezet worden vanuit **Email** in de backoffice; die opgeslagen keuze heeft voorrang op `MAIL_AUTO_REPLY_ENABLED`.
+Gebruik voor `MAIL_PASSWORD` een Google App Password (niet je gewone Google-wachtwoord) van hetzelfde Google-account als `MAIL_USERNAME`. Spaties uit de gegroepeerde weergave van Google worden automatisch verwijderd. Maak de Turnstile-sleutels aan in Cloudflare en stel beide gebruikte hostnames in bij de widget. De backend accepteert alleen siteverify-antwoorden met `success: true` én een hostname uit `TURNSTILE_EXPECTED_HOSTNAMES`. De site key is publiek; de secret key blijft uitsluitend op de server. `.env` is uitgesloten van Git. Zonder beide Turnstile-sleutels wordt het contactformulier uit veiligheid niet verzonden. De automatische antwoordmail kan daarna ook aan- of uitgezet worden vanuit **Email** in de backoffice; die opgeslagen keuze heeft voorrang op `MAIL_AUTO_REPLY_ENABLED`.
 
 ```bash
 deno task start

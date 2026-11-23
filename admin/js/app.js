@@ -201,6 +201,7 @@ function getSidebarLinks(user) {
 
   if (user && user.role === "ADMIN") {
     links.splice(1, 0, { href: "/admin/users", label: "Users", icon: "people" });
+    links.splice(2, 0, { href: "/admin/email-settings", label: "Email", icon: "envelope" });
   }
 
   return links;
@@ -1113,6 +1114,126 @@ async function initSiteImagesPage() {
   });
 }
 
+async function initEmailSettingsPage() {
+  const user = await requireSession();
+  if (!user || user.role !== "ADMIN") {
+    window.location.href = "/admin/login";
+    return;
+  }
+
+  const { settings } = await api.get("/api/admin/email-settings");
+  renderShell(user, "Email", `
+    <div class="page-section email-settings-page">
+      <p class="text-muted">Beheer de inhoud van de contactmails. SMTP-inloggegevens blijven veilig op de server.</p>
+      <form id="emailSettingsForm" class="modern-form">
+        <section class="form-panel email-settings-card">
+          <div>
+            <h2 class="h5 mb-2">Ontvangen contactformulier-e-mails</h2>
+            <p class="text-muted mb-3">Deze template wordt naar vragen@matiscoene.be gestuurd.</p>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="inboxSubject">E-mailonderwerp</label>
+            <input id="inboxSubject" class="form-control" maxlength="180" required />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="inboxTemplate">E-mailinhoud (HTML-template)</label>
+            <textarea id="inboxTemplate" class="form-textarea email-template-input" rows="12" maxlength="10000" required></textarea>
+            <small class="text-muted">Beschikbare placeholders: {{name}}, {{email}}, {{phone}}, {{subject}}, {{message}}, {{date}}. Opmaak: p, h1-h3, strong, em, ul, ol, li, br, blockquote.</small>
+          </div>
+          <div class="email-preview-wrap">
+            <div class="email-preview-heading">
+              <strong>Voorbeeldweergave</strong>
+              <button class="secondary-action" type="button" data-email-preview="inbox">Vernieuw voorbeeld</button>
+            </div>
+            <p class="text-muted small" data-email-preview-subject="inbox"></p>
+            <iframe class="email-preview-frame" data-email-preview-frame="inbox" title="Voorbeeld van ontvangen contactformulier-e-mail" sandbox></iframe>
+          </div>
+        </section>
+
+        <section class="form-panel email-settings-card">
+          <div>
+            <h2 class="h5 mb-2">Automatische antwoordmail</h2>
+            <p class="text-muted mb-3">De bevestiging wordt alleen naar de bezoeker gestuurd nadat het contactbericht is afgeleverd.</p>
+          </div>
+          <label class="email-toggle" for="autoReplyEnabled">
+            <input id="autoReplyEnabled" type="checkbox" />
+            <span>Automatische antwoordmail inschakelen</span>
+          </label>
+          <div class="field-group">
+            <label class="field-label" for="autoReplySubject">E-mailonderwerp</label>
+            <input id="autoReplySubject" class="form-control" maxlength="180" required />
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="autoReplyTemplate">E-mailinhoud (HTML-template)</label>
+            <textarea id="autoReplyTemplate" class="form-textarea email-template-input" rows="12" maxlength="10000" required></textarea>
+            <small class="text-muted">Beschikbare placeholders: {{name}}, {{email}}, {{message}}, {{date}}. Opmaak: p, h1-h3, strong, em, ul, ol, li, br, blockquote.</small>
+          </div>
+          <div class="email-preview-wrap">
+            <div class="email-preview-heading">
+              <strong>Voorbeeldweergave</strong>
+              <button class="secondary-action" type="button" data-email-preview="reply">Vernieuw voorbeeld</button>
+            </div>
+            <p class="text-muted small" data-email-preview-subject="reply"></p>
+            <iframe class="email-preview-frame" data-email-preview-frame="reply" title="Voorbeeld van automatische antwoordmail" sandbox></iframe>
+          </div>
+        </section>
+
+        <div id="emailSettingsAlert" class="form-alert" role="status"></div>
+        <div class="sticky-actions">
+          <button class="primary-action" type="submit"><i class="bi bi-check-lg"></i> Instellingen opslaan</button>
+        </div>
+      </form>
+    </div>
+  `);
+
+  const form = document.getElementById("emailSettingsForm");
+  const fieldIds = ["inboxSubject", "inboxTemplate", "autoReplySubject", "autoReplyTemplate"];
+  for (const id of fieldIds) {
+    document.getElementById(id).value = settings[id];
+  }
+  document.getElementById("autoReplyEnabled").checked = settings.autoReplyEnabled;
+
+  const collectSettings = () => ({
+    inboxSubject: document.getElementById("inboxSubject").value,
+    inboxTemplate: document.getElementById("inboxTemplate").value,
+    autoReplyEnabled: document.getElementById("autoReplyEnabled").checked,
+    autoReplySubject: document.getElementById("autoReplySubject").value,
+    autoReplyTemplate: document.getElementById("autoReplyTemplate").value,
+  });
+
+  const updatePreview = async (type) => {
+    try {
+      const preview = await api.post(`/api/admin/email-settings/preview?type=${type}`, collectSettings());
+      const frame = document.querySelector(`[data-email-preview-frame="${type}"]`);
+      const subject = document.querySelector(`[data-email-preview-subject="${type}"]`);
+      frame.srcdoc = preview.html;
+      subject.textContent = `Onderwerp: ${preview.subject}`;
+    } catch (error) {
+      showToast(error.message || "Voorbeeld laden mislukt.", "error");
+    }
+  };
+
+  document.querySelectorAll("[data-email-preview]").forEach((button) => {
+    button.addEventListener("click", () => updatePreview(button.dataset.emailPreview));
+  });
+  await updatePreview("inbox");
+  await updatePreview("reply");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    try {
+      const result = await api.put("/api/admin/email-settings", collectSettings());
+      showToast(result.message, "success");
+    } catch (error) {
+      showToast(error.message || "E-mailinstellingen opslaan mislukt.", "error");
+    } finally {
+      submitButton.disabled = false;
+    }
+  });
+}
+
 async function initPage() {
   const path = getCurrentPath();
 
@@ -1153,6 +1274,11 @@ async function initPage() {
 
   if (path === "/admin/site-images") {
     initSiteImagesPage();
+    return;
+  }
+
+  if (path === "/admin/email-settings") {
+    initEmailSettingsPage();
     return;
   }
 }

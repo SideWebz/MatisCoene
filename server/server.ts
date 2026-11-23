@@ -1,6 +1,7 @@
 import { getCurrentUser } from "./auth/session.ts";
 import { initDatabase } from "./database/db.ts";
 import { handleAuthRoutes } from "./routes/auth.ts";
+import { handleEmailRoutes } from "./routes/email.ts";
 import { handleProjectRoutes } from "./routes/projects.ts";
 import { handlePublicRoutes } from "./routes/public.ts";
 import { getPublicSiteImageUrls, handleSiteImageRoutes } from "./routes/site-images.ts";
@@ -113,6 +114,10 @@ async function handleStaticResource(request: Request): Promise<Response | null> 
       return await serveFile(`${appRoot}/admin/site-images/index.html`);
     }
 
+    if (pathname === "/admin/email-settings") {
+      return await serveFile(`${appRoot}/admin/email-settings/index.html`);
+    }
+
     if (pathname === "/admin/projects") {
       return await serveFile(`${appRoot}/admin/projects/index.html`);
     }
@@ -163,13 +168,17 @@ async function handleAdminAccess(request: Request): Promise<Response | null> {
     return new Response("Access denied", { status: 403 });
   }
 
+  if (pathname === "/admin/email-settings" && user.role !== "ADMIN") {
+    return new Response("Access denied", { status: 403 });
+  }
+
   return null;
 }
 
 const database = await initDatabase();
 (globalThis as typeof globalThis & { appDatabase?: unknown }).appDatabase = database;
 
-Deno.serve({ port }, async (request: Request) => {
+Deno.serve({ port }, async (request: Request, info) => {
   const url = new URL(request.url);
   const pathname = url.pathname;
 
@@ -177,6 +186,14 @@ Deno.serve({ port }, async (request: Request) => {
     const authResponse = await handleAuthRoutes(request);
     if (authResponse) {
       return authResponse;
+    }
+
+    const emailResponse = await handleEmailRoutes(
+      request,
+      info.remoteAddr.transport === "tcp" ? info.remoteAddr.hostname : "unknown",
+    );
+    if (emailResponse) {
+      return emailResponse;
     }
 
     const publicResponse = await handlePublicRoutes(request);

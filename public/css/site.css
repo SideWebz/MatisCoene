@@ -612,6 +612,82 @@ html.lightbox-open {
   outline-offset: 3px;
 }
 
+.contact-form__submit:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.contact-form__honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.contact-form__captcha {
+  min-height: 65px;
+}
+
+.contact-form__captcha-status {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.contact-notice {
+  position: fixed;
+  right: clamp(1rem, 3vw, 2rem);
+  bottom: clamp(1rem, 3vw, 2rem);
+  z-index: 10000;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  width: min(420px, calc(100vw - 2rem));
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(20, 20, 20, 0.97);
+  color: #fff;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  font: 500 0.95rem/1.5 var(--font-sans);
+  opacity: 0;
+  transform: translateY(10px);
+  animation: contactNoticeIn 0.22s ease forwards;
+}
+
+.contact-notice--error {
+  border-color: rgba(255, 185, 185, 0.45);
+}
+
+.contact-notice__message {
+  flex: 1;
+}
+
+.contact-notice__close {
+  flex: 0 0 auto;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@keyframes contactNoticeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-notice {
+    animation-duration: 0.01ms;
+  }
+}
+
 /* afbeelding: vult de hoogte naast het formulier, uitgesneden i.p.v. vervormd */
 .contact__image {
   min-width: 0;

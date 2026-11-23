@@ -64,7 +64,11 @@
   <div class="contact__form-wrap">
     <h2 id="contact-title" class="contact__title">Contact</h2>
 
-    <form class="contact-form" action="#" method="post">
+    <form class="contact-form" action="/api/public/contact" method="post">
+      <div class="contact-form__honeypot" aria-hidden="true">
+        <label for="contact-website">Website</label>
+        <input id="contact-website" name="website" type="text" tabindex="-1" autocomplete="off" />
+      </div>
       <div class="contact-form__field">
         <label for="contact-name">Naam</label>
         <input id="contact-name" name="name" type="text" autocomplete="name" required />
@@ -85,6 +89,8 @@
         <textarea id="contact-project" name="project" rows="5" required></textarea>
       </div>
 
+      <div id="contact-turnstile" class="contact-form__captcha" aria-label="Spambeveiliging"></div>
+      <p id="contact-captcha-status" class="contact-form__captcha-status" role="status" aria-live="polite"></p>
       <button type="submit" class="contact-form__submit">Verstuur</button>
     </form>
   </div>
@@ -93,3 +99,5 @@
     <img src="{contactImage}" alt="" />
   </div>
 </section>
+
+<script src="/js/contact.js" defer></script>

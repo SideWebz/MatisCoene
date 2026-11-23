@@ -45,5 +45,9 @@ export async function handlePublicRoutes(request: Request): Promise<Response | n
     return jsonResponse({ images: getPublicSiteImageUrls() });
   }
 
+  if (request.method === "GET" && url.pathname === "/api/public/turnstile-config") {
+    return jsonResponse({ siteKey: Deno.env.get("TURNSTILE_SITE_KEY") ?? "" });
+  }
+
   return null;
 }

@@ -63,8 +63,33 @@ Als de database nog niet bestaat, wordt deze automatisch aangemaakt.
 
 De serverpoort staat in het `.env`-bestand in de projectroot. De standaardwaarde is `4000`.
 
+Maak `.env` aan op basis van `.env.example` en vul de Gmail SMTP-gegevens in:
+
+```env
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_ENCRYPTION=tls
+MAIL_USERNAME=jouwgmailadres@gmail.com
+MAIL_PASSWORD=jouw-google-app-password
+MAIL_FROM_ADDRESS=jouwgmailadres@gmail.com
+MAIL_FROM_NAME="Matis Coene"
+MAIL_TO_ADDRESS=vragen@matiscoene.be
+MAIL_AUTO_REPLY_ENABLED=true
+TURNSTILE_SITE_KEY=jouw-cloudflare-turnstile-site-key
+TURNSTILE_SECRET_KEY=jouw-cloudflare-turnstile-secret-key
+```
+
+Gebruik voor `MAIL_PASSWORD` een Google App Password (niet je gewone Google-wachtwoord). Maak de Turnstile-sleutels aan in Cloudflare en stel het domein van je website in bij de widget. De site key is publiek; de secret key blijft uitsluitend op de server. `.env` is uitgesloten van Git. Zonder beide Turnstile-sleutels wordt het contactformulier uit veiligheid niet verzonden. De automatische antwoordmail kan daarna ook aan- of uitgezet worden vanuit **Email** in de backoffice; die opgeslagen keuze heeft voorrang op `MAIL_AUTO_REPLY_ENABLED`.
+
 ```bash
 deno task start
+```
+
+De e-mailinstellingentabel wordt automatisch aangemaakt bij het opstarten via het bestaande SQLite-schema. Er is geen handmatige migratie nodig. Installeer op de server de projectbestanden inclusief `deno.lock` en `.env.example`, maak daar een eigen `.env` aan, en voer `deno task start` uit. Controleer de functionaliteit veilig met:
+
+```bash
+deno test server/services/email-templates.test.ts
+deno task build
 ```
 
 Open daarna in de browser:

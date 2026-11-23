@@ -30,6 +30,9 @@ function getContentType(filePath: string): string {
     webp: "image/webp",
     ico: "image/x-icon",
     svg: "image/svg+xml",
+    txt: "text/plain; charset=utf-8",
+    xml: "application/xml; charset=utf-8",
+    webmanifest: "application/manifest+json; charset=utf-8",
   };
 
   return types[extension] ?? "application/octet-stream";
@@ -76,6 +79,50 @@ async function servePublicIndex(): Promise<Response> {
   });
 }
 
+async function servePublicLegalPage(
+  slug: string,
+  title: string,
+  description: string,
+  mainFile: string,
+): Promise<Response> {
+  const publicRoot = `${appRoot}/public`;
+  const [template, baseHead, header, main, footer] = await Promise.all([
+    Deno.readTextFile(`${publicRoot}/index.html`),
+    Deno.readTextFile(`${publicRoot}/sections/head.html`),
+    Deno.readTextFile(`${publicRoot}/sections/header.html`),
+    Deno.readTextFile(`${publicRoot}/sections/${mainFile}`),
+    Deno.readTextFile(`${publicRoot}/sections/footer.html`),
+  ]);
+  const canonical = `https://matiscoene.com/${slug}`;
+  const head = baseHead
+    .replace('<meta name="robots" content="index, follow" />', '<meta name="robots" content="index, follow" />')
+    .replace('<link rel="canonical" href="https://matiscoene.com/" />', `<link rel="canonical" href="${canonical}" />`)
+    .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
+    .replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${description}" />`)
+    .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${title}" />`)
+    .replace(/<meta property="og:description" content="[^"]*" \/>/, `<meta property="og:description" content="${description}" />`)
+    .replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${canonical}" />`)
+    .replace(/<meta name="twitter:title" content="[^"]*" \/>/, `<meta name="twitter:title" content="${title}" />`)
+    .replace(/<meta name="twitter:description" content="[^"]*" \/>/, `<meta name="twitter:description" content="${description}" />`);
+  const images = getPublicSiteImageUrls();
+  const sections = {
+    head,
+    header: header.replace("{headerImage}", images.header),
+    main,
+    footer,
+  };
+  const html = template
+    .replace("<html lang=\"en\">", '<html lang="nl">')
+    .replace(
+      /\{(head|header|main|footer)\}/g,
+      (_match, section: keyof typeof sections) => sections[section],
+    );
+
+  return new Response(html, {
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
 function resolveRequestPath(pathname: string, baseDir: string): string {
   const normalized = pathname.replace(/^\/+/, "").replace(/\/+/g, "/");
   if (!normalized) {
@@ -86,10 +133,24 @@ function resolveRequestPath(pathname: string, baseDir: string): string {
 
 async function handleStaticResource(request: Request): Promise<Response | null> {
   const url = new URL(request.url);
-  const pathname = url.pathname;
+  const pathname = url.pathname.replace(/\/+$/, "") || "/";
 
   if (pathname === "/" || pathname === "/index.html") {
     return await servePublicIndex();
+  }
+
+  const legalPages: Record<string, [string, string, string]> = {
+    "/privacy-policy": ["Privacy Policy | Matis Coene", "Privacyverklaring van Matis Coene over gegevens uit het contactformulier.", "privacy-policy.html"],
+    "/privacy-policy.html": ["Privacy Policy | Matis Coene", "Privacyverklaring van Matis Coene over gegevens uit het contactformulier.", "privacy-policy.html"],
+    "/algemene-voorwaarden": ["Algemene Voorwaarden | Matis Coene", "Algemene voorwaarden voor het gebruik van de website en freelance diensten van Matis Coene.", "algemene-voorwaarden.html"],
+    "/algemene-voorwaarden.html": ["Algemene Voorwaarden | Matis Coene", "Algemene voorwaarden voor het gebruik van de website en freelance diensten van Matis Coene.", "algemene-voorwaarden.html"],
+    "/cookie-policy": ["Cookie Policy | Matis Coene", "Overzicht van cookies en andere opslag die gebruikt worden op matiscoene.com.", "cookie-policy.html"],
+    "/cookie-policy.html": ["Cookie Policy | Matis Coene", "Overzicht van cookies en andere opslag die gebruikt worden op matiscoene.com.", "cookie-policy.html"],
+  };
+  const legalPage = legalPages[pathname];
+  if (legalPage) {
+    const slug = pathname.replace(/\.html$/, "").replace(/^\//, "");
+    return await servePublicLegalPage(slug, legalPage[0], legalPage[1], legalPage[2]);
   }
 
   if (pathname.startsWith("/uploads/")) {

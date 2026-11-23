@@ -866,6 +866,23 @@ html.lightbox-open {
   font-weight: 150;
 }
 
+.site-footer__short {
+  display: none;                              /* korte label alleen op mobiel */
+}
+
+.site-footer__credit {
+  margin: clamp(0.5rem, 1vw, 1rem) 0 0;
+  font-size: clamp(0.7rem, 1vw, 0.95rem);
+  font-weight: 200;
+  line-height: 1.2;
+  opacity: 0.7;
+}
+
+.site-footer__credit a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* ---------- Tablet + mobiel (t.e.m. 1199px) ---------- */
 /* Zelfde footer als op desktop (naam, gegevens, lijn, links en het logo met
    de copyright erin), maar gestapeld: eerst alle info, daarna het logo op volle breedte. */
@@ -958,8 +975,26 @@ html.lightbox-open {
     font-size: 1rem;
   }
 
+  /* Drie links netjes naast elkaar op één regel */
   .site-footer__legal {
-    font-size: 0.875rem;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: clamp(0.75rem, 3.6vw, 0.875rem);
+    white-space: nowrap;
+  }
+
+  .site-footer__long {
+    display: none;
+  }
+
+  .site-footer__short {
+    display: inline;
+  }
+
+  .site-footer__credit {
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
   }
 
   .site-footer__copyright {
